@@ -1,7 +1,7 @@
 {
   "name": "electron-multi-ai",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "main.js",
   "license": "MIT",
   "dependencies": {
     "electron": "^35.0.2",

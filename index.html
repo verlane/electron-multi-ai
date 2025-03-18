@@ -28,13 +28,15 @@
     }
 
     #input-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
       padding: 10px;
       background: #191a1a;
     }
 
     #chat-input {
       display: block;
-      margin: 0 auto;
       padding-left: 6px;
       width: 800px;
       height: 50px;
@@ -42,9 +44,26 @@
       color: #eee;
       font-size: 16px;
       resize: none;
+      border: none;
     }
 
     #chat-input:focus {
+      outline: none;
+    }
+
+    /* 보내기 버튼 스타일 */
+    #send-btn {
+      margin-left: 10px;
+      height: 50px;
+      background: #303030;
+      color: #eee;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+      padding: 0 20px;
+    }
+
+    #send-btn:focus {
       outline: none;
     }
   </style>
@@ -58,11 +77,15 @@
   </div>
   <div id="input-container">
     <textarea id="chat-input" placeholder="메시지를 입력하고 Enter로 전송"></textarea>
+    <button id="send-btn">보내기</button>
   </div>
 
   <script>
     const { ipcRenderer } = require('electron');
     const input = document.getElementById('chat-input');
+    const sendButton = document.getElementById('send-btn');
+
+    // 엔터키로 메시지 전송
     input.addEventListener('keydown', (e) => {
       if (!e.ctrlKey && !e.shiftKey && e.key === 'Enter') {
         const message = input.value.trim();
@@ -74,14 +97,23 @@
       }
     });
 
+    // 보내기 버튼 클릭 시 메시지 전송
+    sendButton.addEventListener('click', () => {
+      const message = input.value.trim();
+      if (message) {
+        ipcRenderer.send('send-message', message);
+        input.value = '';
+      }
+    });
+
     window.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => {
-        document.getElementById('chat-input').focus();
+        input.focus();
       }, 3000);
     });
 
     ipcRenderer.on('focus-chat', () => {
-      document.getElementById('chat-input').focus();
+      input.focus();
     });
 
     let sendingCount = 0;
@@ -171,9 +203,7 @@
 
       sendingCount++;
 
-      setTimeout(() => {
-        document.getElementById('chat-input').focus();
-      }, 5000);
+      input.focus();
     });
   </script>
 </body>
