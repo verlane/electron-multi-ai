@@ -53,7 +53,7 @@ app.whenReady().then(() => {
   // 글로벌 단축키 등록: Ctrl+Shift+Alt+H -> 창 활성화 및 "chat-input" 포커싱
   globalShortcut.register('Control+Shift+Alt+H', () => {
     if (mainWindow) {
-      mainWindow.show();
+      // mainWindow.show();
       mainWindow.focus();
       mainWindow.webContents.send('focus-chat');
     }
