@@ -1,22 +1,34 @@
 // index.js
 const { app, BrowserWindow, ipcMain, clipboard, globalShortcut } = require('electron');
 const robot = require('robotjs');
-const windowStateKeeper = require('electron-window-state'); // 창 상태 관리 모듈
+const fs = require('fs');
+const path = require('path');
 
 let mainWindow;
+const statePath = path.join(app.getPath('userData'), 'window-state.json');
+
+function loadWindowState() {
+  try {
+    const data = fs.readFileSync(statePath, 'utf8');
+    return JSON.parse(data);
+  } catch (e) {
+    // 저장된 상태가 없으면 기본값 반환
+    return { x: undefined, y: undefined, width: 1200, height: 800 };
+  }
+}
+
+function saveWindowState(bounds) {
+  fs.writeFileSync(statePath, JSON.stringify(bounds));
+}
 
 function createWindow() {
-  // 이전 창 상태를 불러오고 기본값을 설정함
-  let winState = windowStateKeeper({
-    defaultWidth: 1200,
-    defaultHeight: 800
-  });
+  const savedState = loadWindowState();
 
   mainWindow = new BrowserWindow({
-    x: winState.x,             // 이전 창의 x 좌표
-    y: winState.y,             // 이전 창의 y 좌표
-    width: winState.width,     // 이전 창의 너비
-    height: winState.height,   // 이전 창의 높이
+    x: savedState.x,
+    y: savedState.y,
+    width: savedState.width,
+    height: savedState.height,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -24,16 +36,21 @@ function createWindow() {
     }
   });
 
-  // 창 상태를 자동으로 관리(저장, 복원)
-  winState.manage(mainWindow);
-
   mainWindow.loadFile('index.html');
+
+  // 창 크기나 위치가 변경될 때마다 실제 bounds(스냅 상태 포함)를 저장
+  mainWindow.on('resize', () => {
+    saveWindowState(mainWindow.getBounds());
+  });
+  mainWindow.on('move', () => {
+    saveWindowState(mainWindow.getBounds());
+  });
 }
 
 app.whenReady().then(() => {
   createWindow();
 
-  // 글로벌 단축키 등록: Ctrl+F -> 창 활성화 및 "chat-input" 포커싱
+  // 글로벌 단축키 등록: Ctrl+Shift+Alt+H -> 창 활성화 및 "chat-input" 포커싱
   globalShortcut.register('Control+Shift+Alt+H', () => {
     if (mainWindow) {
       mainWindow.show();
@@ -51,11 +68,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-ipcMain.handle('get-window-bounds', () => {
-  return mainWindow.getBounds();
-});
-
-// RobotJS를 이용한 IPC 이벤트 핸들러
+// 나머지 robot-action 및 send-message 핸들러 등은 기존대로...
 ipcMain.on('robot-action', (event, data) => {
   const mousePos = robot.getMousePos();
   if (data.type === 'click-relative') {
@@ -84,6 +97,6 @@ ipcMain.on('send-message', (event, message) => {
   event.reply('dispatch-message', message, mainWindow.getBounds());
 });
 
-// 자동 리로드
+// 자동 리로드 (개발 중)
 const electronReload = require('electron-reload');
 electronReload(__dirname);
