@@ -1,0 +1,61 @@
+/* assets/style.css */
+* {
+  font-family: 'Meiryo UI';
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #191a1a;
+}
+
+.views {
+  flex: 1;
+  display: flex;
+}
+
+webview {
+  flex: 1;
+}
+
+#input-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  background: #191a1a;
+}
+
+#chat-input {
+  display: block;
+  padding-left: 6px;
+  width: 800px;
+  height: 50px;
+  background: #303030;
+  color: #eee;
+  font-size: 16px;
+  resize: none;
+  border: none;
+}
+
+#chat-input:focus {
+  outline: none;
+}
+
+#send-btn {
+  margin-left: 10px;
+  height: 50px;
+  background: #303030;
+  color: #eee;
+  font-size: 16px;
+  border: none;
+  cursor: pointer;
+  padding: 0 20px;
+}
+
+#send-btn:focus {
+  outline: none;
+}
