@@ -1,0 +1,19 @@
+{
+  "name": "electron-multi-ai",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "electron": "^35.0.2",
+    "electron-reload": "^2.0.0-alpha.1",
+    "electron-window-state": "^5.0.3",
+    "robotjs": "^0.6.0"
+  },
+  "scripts": {
+    "start": "electron .",
+    "rebuild": "electron-rebuild"
+  },
+  "devDependencies": {
+    "electron-rebuild": "^3.2.9"
+  }
+}

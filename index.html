@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Multi AI Chat</title>
+  <style>
+    * {
+      font-family: 'Meiryo UI';
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .views {
+      flex: 1;
+      display: flex;
+    }
+
+    webview {
+      flex: 1;
+      border: 1px solid #ccc;
+    }
+
+    #input-container {
+      padding: 10px;
+      background: #f0f0f0;
+    }
+
+    #chat-input {
+      display: block;
+      margin: 0 auto; /* 좌우 자동 마진으로 가운데 정렬 */
+      padding-left: 6px;
+      width: 800px;
+      height: 50px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="views">
+    <webview id="chatgpt" src="https://chatgpt.com/" partition="persist:chatgpt"></webview>
+    <webview id="perplexity" src="https://www.perplexity.ai/" partition="persist:perplexity"></webview>
+    <webview id="grok" src="https://grok.com/" partition="persist:grok"></webview>
+  </div>
+  <div id="input-container">
+    <textarea id="chat-input" placeholder="메시지를 입력하고 Enter로 전송"></textarea>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    const input = document.getElementById('chat-input');
+    input.addEventListener('keydown', (e) => {
+      if (!e.ctrlKey && !e.shiftKey && e.key === 'Enter') {
+        const message = input.value.trim();
+        if (message) {
+          ipcRenderer.send('send-message', message);
+          input.value = '';
+        }
+        e.preventDefault();
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      // document.getElementById('chat-input').focus();
+    });
+
+    ipcRenderer.on('focus-chat', () => {
+      // document.getElementById('body').focus();
+      document.getElementById('chat-input').focus();
+    });
+
+    let sendingCount = 0;
+
+    ipcRenderer.on('dispatch-message', (_, message, mainWindowBounds) => {
+      if (sendingCount < 1) {
+        // chatgpt
+        ipcRenderer.send('robot-action', { type: 'click-relative', x: 660, y: 1050 });
+        ipcRenderer.send('robot-action', { type: 'clipboard-paste', text: message });
+
+        // perplexity
+        ipcRenderer.send('robot-action', { type: 'click-relative', x: 2040, y: 1010 });
+        ipcRenderer.send('robot-action', { type: 'clipboard-paste', text: message });
+
+        // grok
+        ipcRenderer.send('robot-action', { type: 'click-relative', x: 3100, y: 1080 });
+        ipcRenderer.send('robot-action', { type: 'clipboard-paste', text: message });
+      } else {
+        // chatgpt
+        ipcRenderer.send('robot-action', { type: 'click-relative', x: 634, y: 1917 });
+        ipcRenderer.send('robot-action', { type: 'clipboard-paste', text: message });
+
+        // perplexity
+        ipcRenderer.send('robot-action', { type: 'click-relative', x: 1950, y: 2000 });
+        ipcRenderer.send('robot-action', { type: 'clipboard-paste', text: message });
+
+        // grok
+        ipcRenderer.send('robot-action', { type: 'click-relative', x: 3060, y: 1940 });
+        ipcRenderer.send('robot-action', { type: 'clipboard-paste', text: message });
+      }
+
+      sendingCount++;
+
+      setTimeout(() => {
+        document.getElementById('chat-input').focus();
+      }, 3000);
+    });
+  </script>
+</body>
+
+</html>
