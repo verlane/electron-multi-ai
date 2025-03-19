@@ -1,8 +1,10 @@
 // index.js
 const { app, BrowserWindow, ipcMain, clipboard, globalShortcut } = require('electron');
-const robot = require('robotjs');
+// const robot = require('robotjs');
 const fs = require('fs');
 const path = require('path');
+
+const ahkexepath = 'C:/Dev/ahkv2/AutoHotkey.exe';
 
 let mainWindow;
 const statePath = path.join(app.getPath('userData'), 'window-state.json');
@@ -68,30 +70,48 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// 나머지 robot-action 및 send-message 핸들러 등은 기존대로...
-ipcMain.on('robot-action', (event, data) => {
-  const mousePos = robot.getMousePos();
+let ahk = null;
+const mouseSpeed = 1;
+async function loadAHK() {
+  ahk = await require("ahknodejs")(ahkexepath, [
+    { key: '\\', noInterrupt: true },
+    { key: ']', noInterrupt: true },
+  ]);
+  while (true) {
+    await ahk.waitForInterrupt();
+    await ahk.sleep(5000);
+  }
+}
+loadAHK().catch(error => console.log(error));
+
+ipcMain.on('robot-actions', async (event, actions) => {
+  const position = await ahk.getMousePos();
+  for (const actionList of Object.values(actions)) {
+    for (const action of actionList) {
+      await robotAction(action);
+      await ahk.sleep(100)
+    }
+  }
+  await ahk.mouseMove({ x: position[0], y: position[1], speed: mouseSpeed });
+});
+
+async function robotAction(data) {
   if (data.type === 'click-relative') {
     const bounds = mainWindow.getBounds();
     const screenX = bounds.x + data.x;
     const screenY = bounds.y + data.y;
-    robot.moveMouse(screenX, screenY);
-    robot.mouseClick();
+    await ahk.mouseMove({ x: screenX, y: screenY, speed: mouseSpeed });
+    await ahk.click();
   } else if (data.type === 'click') {
-    robot.moveMouse(data.x, data.y);
-    robot.mouseClick();
-  } else if (data.type === 'type') {
-    robot.typeString(data.text);
-  } else if (data.type === 'paste') {
-    robot.keyTap('v', process.platform === 'darwin' ? ['command'] : ['control']);
+    await ahk.mouseMove({ x: data.x, y: data.y, speed: mouseSpeed });
+    await ahk.click();
   } else if (data.type === 'clipboard-paste') {
-    clipboard.writeText(data.text);
-    robot.keyTap('a', process.platform === 'darwin' ? ['command'] : ['control']);
-    robot.keyTap('v', process.platform === 'darwin' ? ['command'] : ['control']);
-    robot.keyTap('enter');
+    await clipboard.writeText(data.text);
+    await ahk.sleep(100);
+    await ahk.send('^a^v');
+    await ahk.send('{Enter}');
   }
-  robot.moveMouse(mousePos.x, mousePos.y);
-});
+}
 
 ipcMain.on('send-message', (event, message) => {
   event.reply('dispatch-message', message, mainWindow.getBounds());

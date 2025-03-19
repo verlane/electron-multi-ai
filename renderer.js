@@ -50,6 +50,7 @@ ipcRenderer.on('dispatch-message', (_, message, mainWindowBounds) => {
         chatgpt: [
           { type: 'click-relative', x: 324, y: 1925 },
           { type: 'clipboard-paste', text: message },
+          { type: 'click-relative', x: 589, y: 1992 }
         ],
         perplexity: [
           { type: 'click-relative', x: 930, y: 320 },
@@ -59,14 +60,12 @@ ipcRenderer.on('dispatch-message', (_, message, mainWindowBounds) => {
           { type: 'click-relative', x: 1604, y: 1937 },
           { type: 'clipboard-paste', text: message }
         ],
-        etc: [
-          { type: 'click-relative', x: 589, y: 1992 }
-        ]
       },
       subsequent: {
         chatgpt: [
           { type: 'click-relative', x: 324, y: 1925 },
           { type: 'clipboard-paste', text: message },
+          { type: 'click-relative', x: 589, y: 1992 }
         ],
         perplexity: [
           { type: 'click-relative', x: 932, y: 1939 },
@@ -76,9 +75,6 @@ ipcRenderer.on('dispatch-message', (_, message, mainWindowBounds) => {
           { type: 'click-relative', x: 1604, y: 1937 },
           { type: 'clipboard-paste', text: message }
         ],
-        etc: [
-          { type: 'click-relative', x: 589, y: 1992 }
-        ]
       }
     },
     large: {
@@ -115,12 +111,11 @@ ipcRenderer.on('dispatch-message', (_, message, mainWindowBounds) => {
 
   // 선택된 시나리오의 액션 전송
   const actions = scenarios[sizeKey][sendKey];
-  Object.values(actions).forEach(actionList => {
-    actionList.forEach(action => {
-      ipcRenderer.send('robot-action', action);
-    });
-  });
+  ipcRenderer.send('robot-actions', actions);
 
   sendingCount++;
-  input.focus();
+
+  setTimeout(() => {
+    input.focus();
+  }, 5000);
 });
