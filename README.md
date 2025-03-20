@@ -2,7 +2,7 @@
 
 ## Important
 
-* Have many bugs
+* There are many bugs
 * The app window about w: 1870 h: 2100 px only works properly 
 
 ## Dependencies
