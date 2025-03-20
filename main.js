@@ -92,7 +92,7 @@ ipcMain.on('robot-actions', async (event, actions) => {
       await ahk.sleep(100)
     }
   }
-  await ahk.mouseMove({ x: position[0], y: position[1], speed: mouseSpeed });
+  await ahk.mouseMove({ x: position[0], y: position[1] });
 });
 
 async function robotAction(data) {
@@ -100,10 +100,10 @@ async function robotAction(data) {
     const bounds = mainWindow.getBounds();
     const screenX = bounds.x + data.x;
     const screenY = bounds.y + data.y;
-    await ahk.mouseMove({ x: screenX, y: screenY, speed: mouseSpeed });
+    await ahk.mouseMove({ x: screenX, y: screenY });
     await ahk.click();
   } else if (data.type === 'click') {
-    await ahk.mouseMove({ x: data.x, y: data.y, speed: mouseSpeed });
+    await ahk.mouseMove({ x: data.x, y: data.y });
     await ahk.click();
   } else if (data.type === 'clipboard-paste') {
     await clipboard.writeText(data.text);
