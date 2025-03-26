@@ -1,10 +1,7 @@
-// index.js
-const { app, BrowserWindow, ipcMain, clipboard, globalShortcut } = require('electron');
-// const robot = require('robotjs');
+const { app, BrowserWindow, ipcMain, clipboard, globalShortcut, screen } = require('electron');
 const fs = require('fs');
 const path = require('path');
-
-const ahkexepath = 'C:/Dev/ahkv2/AutoHotkey.exe';
+const ahkexepath = path.join(__dirname, 'AutoHotkey64.exe');
 
 let mainWindow;
 const statePath = path.join(app.getPath('userData'), 'window-state.json');
@@ -47,6 +44,8 @@ function createWindow() {
   mainWindow.on('move', () => {
     saveWindowState(mainWindow.getBounds());
   });
+
+  const bounds = mainWindow.getBounds();
 }
 
 app.whenReady().then(() => {
@@ -71,7 +70,6 @@ app.on('window-all-closed', () => {
 });
 
 let ahk = null;
-const mouseSpeed = 1;
 async function loadAHK() {
   ahk = await require("ahknodejs")(ahkexepath, [
     { key: '\\', noInterrupt: true },
@@ -98,8 +96,9 @@ ipcMain.on('robot-actions', async (event, actions) => {
 async function robotAction(data) {
   if (data.type === 'click-relative') {
     const bounds = mainWindow.getBounds();
-    const screenX = bounds.x + data.x;
-    const screenY = bounds.y + data.y;
+    const display = screen.getDisplayNearestPoint({ x: bounds.x, y: bounds.y });
+    const screenX = bounds.x * display.scaleFactor + data.x;
+    const screenY = bounds.y * display.scaleFactor + data.y;
     await ahk.mouseMove({ x: screenX, y: screenY });
     await ahk.click();
   } else if (data.type === 'click') {
@@ -114,7 +113,9 @@ async function robotAction(data) {
 }
 
 ipcMain.on('send-message', (event, message) => {
-  event.reply('dispatch-message', message, mainWindow.getBounds());
+  const bounds = mainWindow.getBounds();
+  const display = screen.getDisplayNearestPoint({ x: bounds.x, y: bounds.y });
+  event.reply('dispatch-message', message, bounds, display.scaleFactor);
 });
 
 // 자동 리로드 (개발 중)

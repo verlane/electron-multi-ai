@@ -2,12 +2,11 @@
 
 ## Important
 
-* There are many bugs
-* The app window about w: 1870 h: 2100 px only works properly 
+* The app window about w: 1800 h: 2100 px only works properly 
 
 ## Dependencies
 
-* Install AutoHotkey v2 and set path
+* AutoHotkey v2
 
 ## Demo
 
