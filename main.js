@@ -44,8 +44,6 @@ function createWindow() {
   mainWindow.on('move', () => {
     saveWindowState(mainWindow.getBounds());
   });
-
-  const bounds = mainWindow.getBounds();
 }
 
 app.whenReady().then(() => {

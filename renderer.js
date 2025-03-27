@@ -44,7 +44,7 @@ ipcRenderer.on('dispatch-message', (_, message, mainWindowBounds, scaleFactor) =
   const sendKey = sendingCount < 1 ? 'first' : 'subsequent';
 
   const distance = mainWindowBounds.width * scaleFactor / 3;
-  const startX = distance / 2 + mainWindowBounds.x * scaleFactor;
+  const startX = distance / 2;
   const height = mainWindowBounds.height * scaleFactor;
 
   // 시나리오별 액션 목록 정의
@@ -54,7 +54,7 @@ ipcRenderer.on('dispatch-message', (_, message, mainWindowBounds, scaleFactor) =
         chatgpt: [
           { type: 'click-relative', x: startX, y: height - 235 },
           { type: 'clipboard-paste', text: message },
-          { type: 'click-relative', x: startX + (distance / 2) - 100, y: height - 170 }
+          { type: 'click-relative', x: distance - 60, y: height - 170 }
         ],
         perplexity: [
           { type: 'click-relative', x: startX + distance * 1, y: 320 },
@@ -65,17 +65,17 @@ ipcRenderer.on('dispatch-message', (_, message, mainWindowBounds, scaleFactor) =
           { type: 'clipboard-paste', text: message }
         ],
         etc: [
-          { type: 'click-relative', x: startX + distance - 50, y: height - 400 },
+          { type: 'click-relative', x: startX + (distance / 2) * 0.89, y: height - 400 },
         ],
       },
       subsequent: {
         chatgpt: [
           { type: 'click-relative', x: startX, y: height - 235 },
           { type: 'clipboard-paste', text: message },
-          { type: 'click-relative', x: startX + (distance / 2) - 100, y: height - 170 }
+          { type: 'click-relative', x: distance - 60, y: height - 170 }
         ],
         perplexity: [
-          { type: 'click-relative', x: startX + distance * 2, y: height - 235 },
+          { type: 'click-relative', x: startX + distance * 1, y: height - 235 },
           { type: 'clipboard-paste', text: message }
         ],
         grok: [
