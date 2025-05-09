@@ -96,9 +96,15 @@ ipcRenderer.on('dispatch-message', async (_, message, mainWindowBounds, scaleFac
 
   ipcRenderer.send('robot-actions', actions);
 
-  // Close App 추천 배너
-  let closeModalInterval = setInterval(() => {
-    perplexityWebview.executeJavaScript(`(() => {
+  setTimeout(() => {
+    input.value = ' ';
+    input.focus();
+  }, 5000);
+});
+
+// Close App 추천 배너
+let closeModalInterval = setInterval(() => {
+  perplexityWebview.executeJavaScript(`(() => {
       const btn = document.querySelector('[data-testid="close-modal"]');
       if (btn) {
         btn.click();
@@ -107,15 +113,9 @@ ipcRenderer.on('dispatch-message', async (_, message, mainWindowBounds, scaleFac
         return 'button not found';
       }
     })();`).then(result => {
-      console.log('버튼 클릭 결과:', result);
-      if (result === 'clicked') {
-        clearInterval(closeModalInterval); // 클릭 성공하면 반복 중단
-      }
-    });
-  }, 1000); // 1초마다 반복
-
-  setTimeout(() => {
-    input.value = ' ';
-    input.focus();
-  }, 5000);
-});
+    console.log('버튼 클릭 결과:', result);
+    if (result === 'clicked') {
+      clearInterval(closeModalInterval); // 클릭 성공하면 반복 중단
+    }
+  });
+}, 1000); // 1초마다 반복
