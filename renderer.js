@@ -1,5 +1,9 @@
 const { ipcRenderer } = require('electron');
 
+const chatgptWebview = document.getElementById('chatgpt');
+const perplexityWebview = document.getElementById('perplexity');
+const grokWebview = document.getElementById('grok');
+const titleBarHeight = window.outerHeight - window.innerHeight;
 const input = document.getElementById('chat-input');
 const sendButton = document.getElementById('send-btn');
 
@@ -36,99 +40,64 @@ ipcRenderer.on('focus-chat', () => {
   input.focus();
 });
 
-let sendingCount = 0;
+function getPromptPosition(webview, selector = 'textarea') {
+  const rect = webview.getBoundingClientRect();
+  return webview.executeJavaScript(`
+    (() => {
+      const el = document.querySelector('${selector}');
+      if (!el) return null;
+      const rect = el.getBoundingClientRect();
+      return {
+        x: rect.left,
+        y: rect.top,
+        width: rect.width,
+        height: rect.height
+      };
+    })();
+  `).then(position => {
+    if (!position) return null;
+    return {
+      x: rect.left + position.x,
+      y: rect.top + position.y,
+    };
+  });
+}
 
-ipcRenderer.on('dispatch-message', (_, message, mainWindowBounds, scaleFactor) => {
-  // 창 너비와 최초 전송 여부에 따라 시나리오 키 결정
-  const sizeKey = (mainWindowBounds.width * scaleFactor) < 2200 ? 'small' : 'large';
-  const sendKey = sendingCount < 1 ? 'first' : 'subsequent';
+ipcRenderer.on('dispatch-message', async (_, message, mainWindowBounds, scaleFactor) => {
+  const actions = {};
+  let pos = null;
 
-  const distance = mainWindowBounds.width * scaleFactor / 3;
-  const startX = distance / 2;
-  const height = mainWindowBounds.height * scaleFactor;
+  pos = await getPromptPosition(chatgptWebview, '#prompt-textarea');
+  if (pos) {
+    actions.chatgpt = [
+      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor },
+      { type: 'clipboard-paste', text: message },
+      { type: 'ahk', text: '{Tab 8}{Enter}' },
+    ];
+  }
 
-  // 시나리오별 액션 목록 정의
-  const scenarios = {
-    small: {
-      first: {
-        chatgpt: [
-          { type: 'click-relative', x: startX, y: height - 235 },
-          { type: 'clipboard-paste', text: message },
-          { type: 'click-relative', x: distance - 60, y: height - 170 }
-        ],
-        perplexity: [
-          { type: 'click-relative', x: startX + distance * 1, y: 320 },
-          { type: 'clipboard-paste', text: message }
-        ],
-        grok: [
-          { type: 'click-relative', x: startX + distance * 2, y: height - 235 },
-          { type: 'clipboard-paste', text: message }
-        ],
-        etc: [
-          { type: 'click-relative', x: startX + (distance / 2) * 0.89, y: height - 400 },
-        ],
-      },
-      subsequent: {
-        chatgpt: [
-          { type: 'click-relative', x: startX, y: height - 235 },
-          { type: 'clipboard-paste', text: message },
-          { type: 'click-relative', x: distance - 60, y: height - 170 }
-        ],
-        perplexity: [
-          { type: 'click-relative', x: startX + distance * 1, y: height - 235 },
-          { type: 'clipboard-paste', text: message }
-        ],
-        grok: [
-          { type: 'click-relative', x: startX + distance * 2, y: height - 235 },
-          { type: 'clipboard-paste', text: message }
-        ],
-      }
-    },
-    large: {
-      first: {
-        chatgpt: [
-          { type: 'click-relative', x: 660, y: 1050 },
-          { type: 'clipboard-paste', text: message }
-        ],
-        perplexity: [
-          { type: 'click-relative', x: 2040, y: 1010 },
-          { type: 'clipboard-paste', text: message }
-        ],
-        grok: [
-          { type: 'click-relative', x: 3100, y: 1080 },
-          { type: 'clipboard-paste', text: message }
-        ],
-        // etc: [
-        //   { type: 'click-relative', x: 890, y: 2100 },
-        // ],
-      },
-      subsequent: {
-        chatgpt: [
-          { type: 'click-relative', x: 634, y: 1917 },
-          { type: 'clipboard-paste', text: message }
-        ],
-        perplexity: [
-          { type: 'click-relative', x: 1950, y: 2000 },
-          { type: 'clipboard-paste', text: message }
-        ],
-        grok: [
-          { type: 'click-relative', x: 3060, y: 1940 },
-          { type: 'clipboard-paste', text: message }
-        ],
-        // etc: [
-        //   { type: 'click-relative', x: 890, y: 2100 },
-        // ],
-      }
-    }
-  };
+  pos = await getPromptPosition(perplexityWebview);
+  if (pos) {
+    actions.perplexity = [
+      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor },
+      { type: 'clipboard-paste', text: message },
+      { type: 'ahk', text: '{Enter}' },
+    ];
+  }
 
-  // 선택된 시나리오의 액션 전송
-  const actions = scenarios[sizeKey][sendKey];
+  pos = await getPromptPosition(grokWebview);
+  if (pos) {
+    actions.grok = [
+      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor },
+      { type: 'clipboard-paste', text: message },
+      { type: 'ahk', text: '{Enter}' },
+    ];
+  }
+
   ipcRenderer.send('robot-actions', actions);
 
-  sendingCount++;
-
-  // setTimeout(() => {
-  //   input.focus();
-  // }, 5000);
+  setTimeout(() => {
+    input.value = ' ';
+    input.focus();
+  }, 5000);
 });

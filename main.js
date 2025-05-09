@@ -28,10 +28,11 @@ function createWindow() {
     y: savedState.y,
     width: savedState.width,
     height: savedState.height,
+    autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      webviewTag: true
+      webviewTag: true,
     }
   });
 
@@ -106,7 +107,8 @@ async function robotAction(data) {
     await clipboard.writeText(data.text);
     await ahk.sleep(100);
     await ahk.send('^a^v');
-    await ahk.send('{Enter}');
+  } else if (data.type === 'ahk') {
+    await ahk.send(data.text);
   }
 }
 
