@@ -13,7 +13,7 @@ input.addEventListener('keydown', (e) => {
     const message = input.value.trim();
     if (message) {
       ipcRenderer.send('send-message', message);
-      input.value = '';
+      input.value = ' ';
     }
     e.preventDefault();
   }
@@ -24,7 +24,7 @@ sendButton.addEventListener('click', () => {
   const message = input.value.trim();
   if (message) {
     ipcRenderer.send('send-message', message);
-    input.value = '';
+    input.value = ' ';
   }
 });
 
@@ -95,6 +95,24 @@ ipcRenderer.on('dispatch-message', async (_, message, mainWindowBounds, scaleFac
   }
 
   ipcRenderer.send('robot-actions', actions);
+
+  // Close App 추천 배너
+  let closeModalInterval = setInterval(() => {
+    perplexityWebview.executeJavaScript(`(() => {
+      const btn = document.querySelector('[data-testid="close-modal"]');
+      if (btn) {
+        btn.click();
+        return 'clicked';
+      } else {
+        return 'button not found';
+      }
+    })();`).then(result => {
+      console.log('버튼 클릭 결과:', result);
+      if (result === 'clicked') {
+        clearInterval(closeModalInterval); // 클릭 성공하면 반복 중단
+      }
+    });
+  }, 1000); // 1초마다 반복
 
   setTimeout(() => {
     input.value = ' ';
