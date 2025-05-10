@@ -13,7 +13,7 @@ input.addEventListener('keydown', (e) => {
     const message = input.value.trim();
     if (message) {
       ipcRenderer.send('send-message', message);
-      input.value = ' ';
+      input.value = '';
     }
     e.preventDefault();
   }
@@ -24,7 +24,7 @@ sendButton.addEventListener('click', () => {
   const message = input.value.trim();
   if (message) {
     ipcRenderer.send('send-message', message);
-    input.value = ' ';
+    input.value = '';
   }
 });
 
@@ -37,8 +37,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // 메인 프로세스에서 보낸 'focus-chat' 이벤트 수신 시 포커스
 ipcRenderer.on('focus-chat', () => {
-  input.focus();
+  focusChat();
 });
+
+function focusChat() {
+  input.blur(); // IME 문제 해결 위해 blur 후 다시 focus
+  setTimeout(() => {
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length); // 커서 이동
+  }, 50);
+}
 
 function getPromptPosition(webview, selector = 'textarea') {
   const rect = webview.getBoundingClientRect();
@@ -95,11 +103,9 @@ ipcRenderer.on('dispatch-message', async (_, message, mainWindowBounds, scaleFac
   }
 
   ipcRenderer.send('robot-actions', actions);
-
   setTimeout(() => {
-    input.value = ' ';
-    input.focus();
-  }, 5000);
+    focusChat();
+  }, 5000); // 기존 딜레이 유지
 });
 
 // Close App 추천 배너
