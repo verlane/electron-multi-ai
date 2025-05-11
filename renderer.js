@@ -40,11 +40,28 @@ ipcRenderer.on('focus-chat', () => {
   focusChat();
 });
 
+// Ignore Korean IME
 function focusChat() {
-  input.blur(); // IME 문제 해결 위해 blur 후 다시 focus
+  input.blur();
+
   setTimeout(() => {
     input.focus();
-    input.setSelectionRange(input.value.length, input.value.length); // 커서 이동
+    input.value = ' ';
+    input.setSelectionRange(1, 1);
+
+    const imeHackEvent = new KeyboardEvent('keydown', {
+      key: ' ',
+      code: 'Space',
+      keyCode: 32,
+      which: 32,
+      bubbles: true,
+      cancelable: true,
+    });
+    input.dispatchEvent(imeHackEvent);
+
+    setTimeout(() => {
+      input.value = '';
+    }, 10);
   }, 50);
 }
 
