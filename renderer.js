@@ -40,29 +40,8 @@ ipcRenderer.on('focus-chat', () => {
   focusChat();
 });
 
-// Ignore Korean IME
 function focusChat() {
-  input.blur();
-
-  setTimeout(() => {
-    input.focus();
-    input.value = ' ';
-    input.setSelectionRange(1, 1);
-
-    const imeHackEvent = new KeyboardEvent('keydown', {
-      key: ' ',
-      code: 'Space',
-      keyCode: 32,
-      which: 32,
-      bubbles: true,
-      cancelable: true,
-    });
-    input.dispatchEvent(imeHackEvent);
-
-    setTimeout(() => {
-      input.value = '';
-    }, 10);
-  }, 50);
+  input.focus();
 }
 
 function getPromptPosition(webview, selector = 'textarea') {
@@ -95,7 +74,7 @@ ipcRenderer.on('dispatch-message', async (_, message, mainWindowBounds, scaleFac
   pos = await getPromptPosition(chatgptWebview, '#prompt-textarea');
   if (pos) {
     actions.chatgpt = [
-      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor },
+      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor * 1.02 }, // 1.02 는 조절용
       { type: 'clipboard-paste', text: message },
       { type: 'ahk', text: '{Tab 8}{Enter}' },
     ];
@@ -104,7 +83,7 @@ ipcRenderer.on('dispatch-message', async (_, message, mainWindowBounds, scaleFac
   pos = await getPromptPosition(perplexityWebview);
   if (pos) {
     actions.perplexity = [
-      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor },
+      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor * 1.02 },
       { type: 'clipboard-paste', text: message },
       { type: 'ahk', text: '{Enter}' },
     ];
@@ -113,7 +92,7 @@ ipcRenderer.on('dispatch-message', async (_, message, mainWindowBounds, scaleFac
   pos = await getPromptPosition(grokWebview);
   if (pos) {
     actions.grok = [
-      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor },
+      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor * 1.02 },
       { type: 'clipboard-paste', text: message },
       { type: 'ahk', text: '{Enter}' },
     ];
@@ -122,7 +101,8 @@ ipcRenderer.on('dispatch-message', async (_, message, mainWindowBounds, scaleFac
   ipcRenderer.send('robot-actions', actions);
   setTimeout(() => {
     focusChat();
-  }, 5000); // 기존 딜레이 유지
+    ipcRenderer.send('robot-actions', { etc: [{ type: 'ahk', text: '.{Sleep 3000}{BS}' }] }); // 한글입력 버그 회피용
+  }, 5000);
 });
 
 // Close App 추천 배너
