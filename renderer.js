@@ -74,16 +74,16 @@ ipcRenderer.on('dispatch-message', async (_, message, mainWindowBounds, scaleFac
   pos = await getPromptPosition(chatgptWebview, '#prompt-textarea');
   if (pos) {
     actions.chatgpt = [
-      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor * 1.02 }, // 1.02 는 조절용
+      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor * 1.01 },
       { type: 'clipboard-paste', text: message },
-      { type: 'ahk', text: '{Tab 8}{Enter}' },
+      { type: 'ahk', text: '{Tab 4}{Enter}' },
     ];
   }
 
   pos = await getPromptPosition(perplexityWebview);
   if (pos) {
     actions.perplexity = [
-      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor * 1.02 },
+      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor * 1.01 },
       { type: 'clipboard-paste', text: message },
       { type: 'ahk', text: '{Enter}' },
     ];
@@ -92,7 +92,7 @@ ipcRenderer.on('dispatch-message', async (_, message, mainWindowBounds, scaleFac
   pos = await getPromptPosition(grokWebview);
   if (pos) {
     actions.grok = [
-      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor * 1.02 },
+      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor * 1.01 },
       { type: 'clipboard-paste', text: message },
       { type: 'ahk', text: '{Enter}' },
     ];
@@ -101,7 +101,7 @@ ipcRenderer.on('dispatch-message', async (_, message, mainWindowBounds, scaleFac
   ipcRenderer.send('robot-actions', actions);
   setTimeout(() => {
     focusChat();
-    ipcRenderer.send('robot-actions', { etc: [{ type: 'ahk', text: '.{Sleep 3000}{BS}' }] }); // 한글입력 버그 회피용
+    ipcRenderer.send('robot-actions', { etc: [{ type: 'ahk', text: '.{Sleep 1000}{BS}' }] }); // 한글입력 버그 회피용
   }, 5000);
 });
 
