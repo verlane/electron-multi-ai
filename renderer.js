@@ -68,41 +68,31 @@ function getPromptPosition(webview, selector = 'textarea') {
 }
 
 ipcRenderer.on('dispatch-message', async (_, message, mainWindowBounds, scaleFactor) => {
-  const actions = {};
+  const actions = [];
   let pos = null;
 
   pos = await getPromptPosition(chatgptWebview, '#prompt-textarea');
   if (pos) {
-    actions.chatgpt = [
-      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor * 1.01 },
-      { type: 'clipboard-paste', text: message },
-      { type: 'ahk', text: '{Tab 4}{Enter}' },
-    ];
+    actions.push({ type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor * 1.01 });
+    actions.push({ type: 'clipboard-paste', text: message });
+    actions.push({ type: 'ahk', text: '{Tab 4}{Enter}' });
   }
 
   pos = await getPromptPosition(perplexityWebview);
   if (pos) {
-    actions.perplexity = [
-      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor * 1.01 },
-      { type: 'clipboard-paste', text: message },
-      { type: 'ahk', text: '{Enter}' },
-    ];
+    actions.push({ type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor * 1.01 });
+    actions.push({ type: 'clipboard-paste', text: message });
+    actions.push({ type: 'ahk', text: '{Enter}' });
   }
 
   pos = await getPromptPosition(grokWebview);
   if (pos) {
-    actions.grok = [
-      { type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor * 1.01 },
-      { type: 'clipboard-paste', text: message },
-      { type: 'ahk', text: '{Enter}' },
-    ];
+    actions.push({ type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor * 1.01 });
+    actions.push({ type: 'clipboard-paste', text: message });
+    actions.push({ type: 'ahk', text: '{Enter}' });
   }
 
   ipcRenderer.send('robot-actions', actions);
-  setTimeout(() => {
-    focusChat();
-    ipcRenderer.send('robot-actions', { etc: [{ type: 'ahk', text: '.{Sleep 1000}{BS}' }] }); // 한글입력 버그 회피용
-  }, 5000);
 });
 
 // Close App 추천 배너

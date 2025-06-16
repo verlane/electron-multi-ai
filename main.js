@@ -86,13 +86,14 @@ loadAHK().catch(error => console.log(error));
 
 ipcMain.on('robot-actions', async (event, actions) => {
   const position = await ahk.getMousePos();
-  for (const actionList of Object.values(actions)) {
-    for (const action of actionList) {
-      await robotAction(action);
-      await ahk.sleep(100)
-    }
+    console.log(actions);
+  for (const action of actions) {
+    console.log(action);
+    await robotAction(action);
+    await ahk.sleep(100)
   }
   await ahk.mouseMove({ x: position[0], y: position[1] });
+  mainWindow.webContents.send('focus-chat');
 });
 
 async function robotAction(data) {
