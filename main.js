@@ -86,9 +86,7 @@ loadAHK().catch(error => console.log(error));
 
 ipcMain.on('robot-actions', async (event, actions) => {
   const position = await ahk.getMousePos();
-    console.log(actions);
   for (const action of actions) {
-    console.log(action);
     await robotAction(action);
     await ahk.sleep(100)
   }
