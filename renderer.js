@@ -78,7 +78,7 @@ ipcRenderer.on('dispatch-message', async (_, message, mainWindowBounds, scaleFac
     actions.push({ type: 'ahk', text: '{Tab 4}{Enter}' });
   }
 
-  pos = await getPromptPosition(perplexityWebview);
+  pos = await getPromptPosition(perplexityWebview, '#ask-input');
   if (pos) {
     actions.push({ type: 'click-relative', x: pos.x * 1.1 * scaleFactor, y: (pos.y + titleBarHeight) * scaleFactor * 1.01 });
     actions.push({ type: 'clipboard-paste', text: message });
