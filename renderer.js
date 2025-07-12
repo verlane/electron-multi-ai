@@ -1,4 +1,5 @@
 const { ipcRenderer } = require('electron');
+const { PLATFORMS, TIMING } = require('./src/constants.js');
 
 // ===== DOM Elements =====
 const elements = {
@@ -9,7 +10,309 @@ const elements = {
   sendButton: document.getElementById('send-btn')
 };
 
-const titleBarHeight = window.outerHeight - window.innerHeight;
+// ===== Platform Handlers =====
+class PlatformHandler {
+  static async sendToChatGPT(message) {
+    const config = PLATFORMS.CHATGPT;
+    try {
+      const result = await elements.chatgpt.executeJavaScript(`
+        (() => {
+          const findElement = (selectors) => {
+            for (const selector of selectors) {
+              const element = document.querySelector(selector);
+              if (element) return element;
+            }
+            return null;
+          };
+
+          const editor = findElement(${JSON.stringify(config.selectors.editor)});
+          if (!editor) {
+            return { success: false, error: 'Editor not found' };
+          }
+
+          editor.focus();
+          editor.innerHTML = '';
+          
+          const paragraph = document.createElement('p');
+          paragraph.textContent = '${message.replace(/'/g, "\\'")}';
+          editor.appendChild(paragraph);
+          
+          const inputEvent = new Event('input', { bubbles: true });
+          editor.dispatchEvent(inputEvent);
+          const changeEvent = new Event('change', { bubbles: true });
+          editor.dispatchEvent(changeEvent);
+          
+          setTimeout(() => {
+            const submitButton = findElement(${JSON.stringify(config.selectors.submitButton)}) ||
+                                Array.from(document.querySelectorAll('button')).find(btn => {
+                                  const svg = btn.querySelector('svg');
+                                  return svg && svg.innerHTML.includes('M8.99992 16V6.41407');
+                                });
+            
+            if (submitButton && !submitButton.disabled) {
+              submitButton.click();
+              console.log('ChatGPT submit button clicked successfully');
+            } else {
+              console.log('ChatGPT submit button not found or disabled');
+            }
+          }, ${config.submitDelay});
+          
+          return { success: true, message: 'Text input completed', finalContent: editor.innerHTML };
+        })();
+      `);
+
+      console.log('ChatGPT input result:', result);
+    } catch (error) {
+      console.error('Error inputting message to ChatGPT:', error);
+    }
+  }
+
+  static async sendToPerplexity(message) {
+    const config = PLATFORMS.PERPLEXITY;
+    try {
+      const result = await elements.perplexity.executeJavaScript(`
+        (() => {
+          return new Promise((resolve) => {
+            const findElement = (selectors) => {
+              for (const selector of selectors) {
+                const element = document.querySelector(selector);
+                if (element) return element;
+              }
+              return null;
+            };
+
+            const updateReactState = (element, value) => {
+              const reactKey = Object.keys(element).find(key => 
+                key.startsWith('__reactInternalInstance') || key.startsWith('__reactFiber')
+              );
+              if (reactKey) {
+                const reactInstance = element[reactKey];
+                if (reactInstance && reactInstance.memoizedProps && reactInstance.memoizedProps.onChange) {
+                  reactInstance.memoizedProps.onChange({ target: { value } });
+                }
+              }
+            };
+
+            const dispatchEvents = (element, eventTypes) => {
+              eventTypes.forEach(eventType => {
+                let event;
+                if (eventType === 'keyup' || eventType === 'keydown') {
+                  event = new KeyboardEvent(eventType, { bubbles: true, key: 'a' });
+                } else {
+                  event = new Event(eventType, { bubbles: true });
+                }
+                element.dispatchEvent(event);
+              });
+            };
+
+            const attemptInput = (retryCount = 0) => {
+              const editor = findElement(${JSON.stringify(config.selectors.editor)});
+              
+              
+              if (!editor) {
+                if (retryCount < ${config.retryCount}) {
+                  console.log('Perplexity editor not found, retrying...', retryCount);
+                  setTimeout(() => attemptInput(retryCount + 1), ${config.retryDelay});
+                  return;
+                }
+                resolve({ success: false, error: 'Editor not found after retries' });
+                return;
+              }
+
+              editor.focus();
+              
+              setTimeout(() => {
+                const text = '${message.replace(/'/g, "\\'")}';
+                
+                if (editor.tagName === 'TEXTAREA') {
+                  editor.value = '';
+                  const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+                  nativeInputValueSetter.call(editor, text);
+                  dispatchEvents(editor, ['focus', 'input', 'change', 'keyup', 'keydown']);
+                  updateReactState(editor, text);
+                } else {
+                  editor.innerHTML = '<p><br></p>';
+                  const range = document.createRange();
+                  const selection = window.getSelection();
+                  const p = editor.querySelector('p');
+                  if (p) {
+                    range.setStart(p, 0);
+                    range.collapse(true);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                  }
+                  
+                  document.execCommand('insertText', false, text);
+                  
+                  if (editor.innerHTML === '<p><br></p>' || !editor.textContent.includes(text)) {
+                    editor.innerHTML = '<p>' + text + '</p>';
+                    dispatchEvents(editor, ['input', 'keyup', 'change', 'blur', 'focus']);
+                  }
+                }
+                
+                setTimeout(() => {
+                  const submitButton = findElement(${JSON.stringify(config.selectors.submitButton)});
+                  
+                  
+                  if (submitButton) {
+                    if (!submitButton.disabled) {
+                      submitButton.click();
+                      console.log('Perplexity submit button clicked successfully');
+                    } else {
+                      // Try to wait a bit more for button to become enabled
+                      setTimeout(() => {
+                        if (!submitButton.disabled) {
+                          submitButton.click();
+                          console.log('Perplexity submit button clicked after delay');
+                        } else {
+                          console.log('Perplexity submit button still disabled after delay');
+                        }
+                      }, 500);
+                    }
+                  } else {
+                    console.log('Perplexity submit button not found');
+                  }
+                }, ${config.submitDelay});
+                
+                resolve({ 
+                  success: true, 
+                  message: 'Text input completed',
+                  finalContent: editor.tagName === 'TEXTAREA' ? editor.value : editor.innerHTML,
+                  editorType: editor.tagName,
+                  retryCount: retryCount
+                });
+              }, ${config.focusDelay});
+            };
+            
+            attemptInput();
+          });
+        })();
+      `);
+
+      console.log('Perplexity input result:', result);
+    } catch (error) {
+      console.error('Error inputting message to Perplexity:', error);
+    }
+  }
+
+  static async sendToGrok(message) {
+    const config = PLATFORMS.GROK;
+    try {
+      const result = await elements.grok.executeJavaScript(`
+        (() => {
+          return new Promise((resolve) => {
+            const findElement = (selectors) => {
+              for (const selector of selectors) {
+                const element = document.querySelector(selector);
+                if (element) return element;
+              }
+              return null;
+            };
+
+            const updateReactState = (element, value) => {
+              const reactKey = Object.keys(element).find(key => 
+                key.startsWith('__reactInternalInstance') || key.startsWith('__reactFiber')
+              );
+              if (reactKey) {
+                const reactInstance = element[reactKey];
+                if (reactInstance && reactInstance.memoizedProps && reactInstance.memoizedProps.onChange) {
+                  reactInstance.memoizedProps.onChange({ target: { value } });
+                }
+              }
+            };
+
+            const dispatchEvents = (element, eventTypes) => {
+              eventTypes.forEach(eventType => {
+                let event;
+                if (eventType === 'keyup' || eventType === 'keydown') {
+                  event = new KeyboardEvent(eventType, { bubbles: true, key: 'a' });
+                } else {
+                  event = new Event(eventType, { bubbles: true });
+                }
+                element.dispatchEvent(event);
+              });
+            };
+
+            const attemptInput = (retryCount = 0) => {
+              const textarea = findElement(${JSON.stringify(config.selectors.editor)});
+              
+              
+              if (!textarea) {
+                if (retryCount < ${config.retryCount}) {
+                  console.log('Grok textarea not found, retrying...', retryCount);
+                  setTimeout(() => attemptInput(retryCount + 1), ${config.retryDelay});
+                  return;
+                }
+                resolve({ success: false, error: 'Textarea not found after retries' });
+                return;
+              }
+
+              textarea.focus();
+              ${config.needsEscapeKey ? `
+              const escEvent = new KeyboardEvent('keydown', { 
+                key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true 
+              });
+              document.dispatchEvent(escEvent);
+              ` : ''}
+              
+              setTimeout(() => {
+                const text = '${message.replace(/'/g, "\\'")}';
+                textarea.value = '';
+                const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+                nativeInputValueSetter.call(textarea, text);
+                
+                dispatchEvents(textarea, ['focus', 'input', 'change', 'keyup', 'keydown']);
+                updateReactState(textarea, text);
+                
+                setTimeout(() => {
+                  const submitButton = findElement(${JSON.stringify(config.selectors.submitButton)});
+                  
+                  console.log('Grok submit button state:', {
+                    found: !!submitButton,
+                    disabled: submitButton ? submitButton.disabled : 'not found',
+                    classes: submitButton ? submitButton.className : 'not found'
+                  });
+                  
+                  if (submitButton) {
+                    if (!submitButton.disabled) {
+                      submitButton.click();
+                      console.log('Grok submit button clicked successfully');
+                    } else {
+                      // Try to wait a bit more for button to become enabled
+                      setTimeout(() => {
+                        if (!submitButton.disabled) {
+                          submitButton.click();
+                          console.log('Grok submit button clicked after delay');
+                        } else {
+                          console.log('Grok submit button still disabled after delay');
+                        }
+                      }, 500);
+                    }
+                  } else {
+                    console.log('Grok submit button not found');
+                  }
+                }, ${config.submitDelay});
+                
+                resolve({ 
+                  success: true, 
+                  message: 'Text input completed',
+                  finalContent: textarea.value,
+                  retryCount: retryCount
+                });
+              }, ${config.focusDelay});
+            };
+            
+            attemptInput();
+          });
+        })();
+      `);
+
+      console.log('Grok input result:', result);
+    } catch (error) {
+      console.error('Error inputting message to Grok:', error);
+    }
+  }
+}
 
 // ===== Input Management =====
 class InputManager {
@@ -76,348 +379,14 @@ class IPCEventManager {
 // ===== Message Dispatcher =====
 class MessageDispatcher {
   static async handle(_, message) {
-    // Send to all platforms
-    await MessageDispatcher.sendToChatGPT(message);
-    await MessageDispatcher.sendToPerplexity(message);
-    await MessageDispatcher.sendToGrok(message);
-  }
-
-  static async sendToChatGPT(message) {
     try {
-      const result = await elements.chatgpt.executeJavaScript(`
-        (() => {
-          // Find the ProseMirror editor
-          const editor = document.querySelector('.ProseMirror[contenteditable="true"]') ||
-                        document.querySelector('div[contenteditable="true"]#prompt-textarea') ||
-                        document.querySelector('[data-placeholder*="무엇이든"]');
-          
-          if (!editor) {
-            return { success: false, error: 'Editor not found' };
-          }
-
-          // Focus first
-          editor.focus();
-          
-          // Clear existing content
-          editor.innerHTML = '';
-          
-          // Create text node and add to editor
-          const text = '${message.replace(/'/g, "\\'")}';
-          const paragraph = document.createElement('p');
-          paragraph.textContent = text;
-          editor.appendChild(paragraph);
-          
-          // Trigger input events
-          const inputEvent = new Event('input', { bubbles: true });
-          editor.dispatchEvent(inputEvent);
-          
-          const changeEvent = new Event('change', { bubbles: true });
-          editor.dispatchEvent(changeEvent);
-          
-          // Wait a bit for the submit button to appear
-          setTimeout(() => {
-            // Look for submit button - it should appear after text input
-            const submitButton = document.querySelector('button[data-testid="send-button"]') ||
-                                document.querySelector('button[aria-label*="프롬프트 보내기"]') ||
-                                document.querySelector('button[aria-label*="Send"]') ||
-                                document.querySelector('form button[type="submit"]') ||
-                                // Look for button with the specific SVG path you showed
-                                Array.from(document.querySelectorAll('button')).find(btn => {
-                                  const svg = btn.querySelector('svg');
-                                  return svg && svg.innerHTML.includes('M8.99992 16V6.41407');
-                                });
-            
-            if (submitButton && !submitButton.disabled) {
-              submitButton.click();
-              console.log('Submit button clicked successfully');
-            } else {
-              console.log('Submit button not found or disabled');
-            }
-          }, 100);
-          
-          return { 
-            success: true, 
-            message: 'Text input completed',
-            finalContent: editor.innerHTML
-          };
-        })();
-      `);
-
-      console.log('ChatGPT input result:', result);
+      await Promise.allSettled([
+        PlatformHandler.sendToChatGPT(message),
+        PlatformHandler.sendToPerplexity(message),
+        PlatformHandler.sendToGrok(message)
+      ]);
     } catch (error) {
-      console.error('Error inputting message to ChatGPT:', error);
-    }
-  }
-
-  static async sendToPerplexity(message) {
-    try {
-      const result = await elements.perplexity.executeJavaScript(`
-        (() => {
-          return new Promise((resolve) => {
-            const attemptInput = (retryCount = 0) => {
-              // Find input element - could be Lexical editor or textarea after first message
-              let editor = document.querySelector('textarea#ask-input') ||
-                          document.querySelector('div[contenteditable="true"]#ask-input') ||
-                          document.querySelector('[data-lexical-editor="true"]') ||
-                          document.querySelector('div[contenteditable="true"]') ||
-                          document.querySelector('textarea[placeholder*="추가"]') ||
-                          document.querySelector('[aria-placeholder*="아무거나"]') ||
-                          document.querySelector('[role="textbox"]');
-              
-              // Debug: log what we find
-              console.log('Editor search result:', editor);
-              console.log('Editor type:', editor ? editor.tagName : 'not found');
-              console.log('Available inputs:', {
-                textareas: document.querySelectorAll('textarea').length,
-                contenteditable: document.querySelectorAll('[contenteditable="true"]').length
-              });
-              
-              if (!editor) {
-                if (retryCount < 5) { // Increased retry count
-                  console.log('Editor not found, retrying...', retryCount);
-                  setTimeout(() => attemptInput(retryCount + 1), 1000); // Increased delay
-                  return;
-                }
-                resolve({ success: false, error: 'Editor not found after retries' });
-                return;
-              }
-
-              // Focus first
-              editor.focus();
-              
-              // Wait a bit for focus to complete
-              setTimeout(() => {
-                const text = '${message.replace(/'/g, "\\'")}';
-                
-                if (editor.tagName === 'TEXTAREA') {
-                  // Handle textarea (after first message)
-                  // Clear first
-                  editor.value = '';
-                  
-                  // Use property setter to ensure React detects change
-                  const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
-                  nativeInputValueSetter.call(editor, text);
-                  
-                  // Trigger multiple events for textarea
-                  const events = ['focus', 'input', 'change', 'keyup', 'keydown'];
-                  events.forEach(eventType => {
-                    let event;
-                    if (eventType === 'keyup' || eventType === 'keydown') {
-                      event = new KeyboardEvent(eventType, { bubbles: true, key: 'a' });
-                    } else {
-                      event = new Event(eventType, { bubbles: true });
-                    }
-                    editor.dispatchEvent(event);
-                  });
-                  
-                  // Additional React state update attempt
-                  const reactKey = Object.keys(editor).find(key => key.startsWith('__reactInternalInstance') || key.startsWith('__reactFiber'));
-                  if (reactKey) {
-                    const reactInstance = editor[reactKey];
-                    if (reactInstance && reactInstance.memoizedProps && reactInstance.memoizedProps.onChange) {
-                      reactInstance.memoizedProps.onChange({ target: { value: text } });
-                    }
-                  }
-                  
-                } else {
-                  // Handle contenteditable div (Lexical editor - first message)
-                  // Clear existing content and set selection
-                  editor.innerHTML = '<p><br></p>';
-                  
-                  // Set cursor position to the paragraph
-                  const range = document.createRange();
-                  const selection = window.getSelection();
-                  const p = editor.querySelector('p');
-                  range.setStart(p, 0);
-                  range.collapse(true);
-                  selection.removeAllRanges();
-                  selection.addRange(range);
-                  
-                  // Simulate typing using document.execCommand (works better with Lexical)
-                  document.execCommand('insertText', false, text);
-                  
-                  // Alternative method if execCommand doesn't work
-                  if (editor.innerHTML === '<p><br></p>' || !editor.textContent.includes(text)) {
-                    editor.innerHTML = '<p>' + text + '</p>';
-                    
-                    // Trigger multiple events for Lexical
-                    ['input', 'keyup', 'change', 'blur', 'focus'].forEach(eventType => {
-                      const event = new Event(eventType, { bubbles: true });
-                      editor.dispatchEvent(event);
-                    });
-                  }
-                }
-                
-                // Wait a bit for the submit button to appear/activate
-                setTimeout(() => {
-                  const submitButton = document.querySelector('button[data-testid="submit-button"]') ||
-                                      document.querySelector('button[aria-label="Submit"]') ||
-                                      document.querySelector('button[aria-label*="제출"]');
-                  
-                  console.log('Submit button state:', {
-                    found: !!submitButton,
-                    disabled: submitButton ? submitButton.disabled : 'not found',
-                    classes: submitButton ? submitButton.className : 'not found',
-                    text: submitButton ? submitButton.textContent : 'not found'
-                  });
-                  
-                  if (submitButton) {
-                    if (!submitButton.disabled) {
-                      submitButton.click();
-                      console.log('Perplexity submit button clicked successfully');
-                    } else {
-                      // Try to wait a bit more for button to become enabled
-                      setTimeout(() => {
-                        if (!submitButton.disabled) {
-                          submitButton.click();
-                          console.log('Perplexity submit button clicked after delay');
-                        } else {
-                          console.log('Perplexity submit button still disabled after delay');
-                        }
-                      }, 500);
-                    }
-                  } else {
-                    console.log('Perplexity submit button not found');
-                  }
-                }, 300); // Increased wait time
-                
-                resolve({ 
-                  success: true, 
-                  message: 'Text input completed',
-                  finalContent: editor.tagName === 'TEXTAREA' ? editor.value : editor.innerHTML,
-                  editorType: editor.tagName,
-                  retryCount: retryCount
-                });
-              }, 200); // Wait 200ms after focus
-            };
-            
-            attemptInput();
-          });
-        })();
-      `);
-
-      console.log('Perplexity input result:', result);
-    } catch (error) {
-      console.error('Error inputting message to Perplexity:', error);
-    }
-  }
-
-  static async sendToGrok(message) {
-    try {
-      const result = await elements.grok.executeJavaScript(`
-        (() => {
-          return new Promise((resolve) => {
-            const attemptInput = (retryCount = 0) => {
-              // Find the textarea
-              const textarea = document.querySelector('textarea[aria-label="Ask Grok anything"]') ||
-                              document.querySelector('textarea') ||
-                              document.querySelector('[placeholder*="What do you want"]') ||
-                              document.querySelector('[placeholder*="How can Grok"]');
-              
-              console.log('Grok textarea search result:', textarea);
-              
-              if (!textarea) {
-                if (retryCount < 5) {
-                  console.log('Grok textarea not found, retrying...', retryCount);
-                  setTimeout(() => attemptInput(retryCount + 1), 1000);
-                  return;
-                }
-                resolve({ success: false, error: 'Textarea not found after retries' });
-                return;
-              }
-
-              // Send ESC key first to close any popups
-              textarea.focus();
-              const escEvent = new KeyboardEvent('keydown', { 
-                key: 'Escape', 
-                code: 'Escape', 
-                keyCode: 27,
-                bubbles: true 
-              });
-              document.dispatchEvent(escEvent);
-              
-              // Wait a bit for ESC to take effect and focus to complete
-              setTimeout(() => {
-                const text = '${message.replace(/'/g, "\\'")}';
-                
-                // Clear first
-                textarea.value = '';
-                
-                // Use property setter to ensure React detects change
-                const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
-                nativeInputValueSetter.call(textarea, text);
-                
-                // Trigger multiple events for textarea
-                const events = ['focus', 'input', 'change', 'keyup', 'keydown'];
-                events.forEach(eventType => {
-                  let event;
-                  if (eventType === 'keyup' || eventType === 'keydown') {
-                    event = new KeyboardEvent(eventType, { bubbles: true, key: 'a' });
-                  } else {
-                    event = new Event(eventType, { bubbles: true });
-                  }
-                  textarea.dispatchEvent(event);
-                });
-                
-                // Additional React state update attempt
-                const reactKey = Object.keys(textarea).find(key => key.startsWith('__reactInternalInstance') || key.startsWith('__reactFiber'));
-                if (reactKey) {
-                  const reactInstance = textarea[reactKey];
-                  if (reactInstance && reactInstance.memoizedProps && reactInstance.memoizedProps.onChange) {
-                    reactInstance.memoizedProps.onChange({ target: { value: text } });
-                  }
-                }
-                
-                // Wait for submit button to activate and click
-                setTimeout(() => {
-                  const submitButton = document.querySelector('button[type="submit"][aria-label="Submit"]') ||
-                                      document.querySelector('button[type="submit"]') ||
-                                      document.querySelector('button[aria-label="Submit"]') ||
-                                      document.querySelector('form button[type="submit"]');
-                  
-                  console.log('Grok submit button state:', {
-                    found: !!submitButton,
-                    disabled: submitButton ? submitButton.disabled : 'not found',
-                    classes: submitButton ? submitButton.className : 'not found'
-                  });
-                  
-                  if (submitButton) {
-                    if (!submitButton.disabled) {
-                      submitButton.click();
-                      console.log('Grok submit button clicked successfully');
-                    } else {
-                      // Try to wait a bit more for button to become enabled
-                      setTimeout(() => {
-                        if (!submitButton.disabled) {
-                          submitButton.click();
-                          console.log('Grok submit button clicked after delay');
-                        } else {
-                          console.log('Grok submit button still disabled after delay');
-                        }
-                      }, 500);
-                    }
-                  } else {
-                    console.log('Grok submit button not found');
-                  }
-                }, 300);
-                
-                resolve({ 
-                  success: true, 
-                  message: 'Text input completed',
-                  finalContent: textarea.value,
-                  retryCount: retryCount
-                });
-              }, 300); // Increased wait time for ESC to take effect
-            };
-            
-            attemptInput();
-          });
-        })();
-      `);
-
-      console.log('Grok input result:', result);
-    } catch (error) {
-      console.error('Error inputting message to Grok:', error);
+      console.error('Error dispatching messages:', error);
     }
   }
 }
@@ -439,7 +408,7 @@ class ModalManager {
           clearInterval(closeModalInterval);
         }
       });
-    }, 1000);
+    }, TIMING.MODAL_CHECK_INTERVAL);
   }
 }
 
@@ -449,8 +418,7 @@ window.addEventListener('DOMContentLoaded', () => {
   IPCEventManager.setupEventHandlers();
   ModalManager.startAutoClose();
   
-  // Initial focus after delay
   setTimeout(() => {
     InputManager.focus();
-  }, 3000);
+  }, TIMING.INITIAL_FOCUS_DELAY);
 });

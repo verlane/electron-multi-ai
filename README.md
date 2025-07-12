@@ -1,14 +1,15 @@
-# Multi AI Chat (Electron + AutoHotkey Integration)
+# Multi AI Chat (Electron + JavaScript Automation)
 
-Multi AI Chat is a cross-platform desktop app built with Electron that allows you to interact with multiple AI chat platforms—ChatGPT, Perplexity, and Grok—simultaneously through WebViews. It also supports message injection, UI automation, and AutoHotkey integration for native-like control.
+Multi AI Chat is a cross-platform desktop app built with Electron that allows you to interact with multiple AI chat platforms—ChatGPT, Perplexity, and Grok—simultaneously through WebViews. It features JavaScript-based DOM manipulation for seamless UI automation across platforms.
 
 ## ✨ Features
 
 - 📱 Multiple AI interfaces (ChatGPT, Perplexity, Grok) in one window
 - ⌨️ Send messages with Enter or "Send" button
-- ⚙️ AutoHotkey automation (clicks, pastes, key sequences)
-- 🖱️ Accurate positioning of WebView elements with coordinate conversion
-- 🧠 Auto-close annoying modals (e.g., Perplexity's "Get the App" banner)
+- 🔗 Cross-platform JavaScript DOM manipulation
+- 🧠 Automatic clipboard copying of sent messages
+- 🎯 Platform-specific input handling (ProseMirror, Lexical, textarea)
+- 🚫 Auto-close annoying modals (e.g., Perplexity's "Get the App" banner)
 - 🔐 Global shortcut: `Ctrl+Shift+Alt+H` focuses the input field
 - 🪟 Remembers window position and size across sessions
 
@@ -18,7 +19,6 @@ Multi AI Chat is a cross-platform desktop app built with Electron that allows yo
 
 - Node.js
 - Yarn
-- AutoHotkey64.exe (included in the project folder)
 
 ### Install
 
@@ -34,10 +34,11 @@ yarn start
 
 ## 🔧 File Structure
 
-- `main.js` — Electron main process (window, IPC, AHK automation)
-- `renderer.js` — Renderer process (WebView message injection and actions)
+- `main.js` — Electron main process (window, IPC, clipboard integration)
+- `renderer.js` — Renderer process (WebView JavaScript injection and DOM manipulation)
+- `src/constants.js` — Platform configurations and selectors
 - `index.html` — Multi-WebView layout with input bar
-- `AutoHotkey64.exe` — Required for script-based automation
+- `assets/style.css` — Dark theme styling
 
 ## ⌨️ Keyboard Shortcuts
 
@@ -46,13 +47,14 @@ yarn start
 ## 🛠 How It Works
 
 1. The user types a message and presses Enter or clicks Send.
-2. The message is sent via IPC to `main.js`, which then redistributes it to all WebViews.
-3. Each WebView calculates the prompt box's position and performs:
-   - Relative mouse click
-   - Clipboard paste
-   - Optional keyboard actions (e.g., `{Tab 8}{Enter}`)
-4. AutoHotkey performs real native actions such as clicking and key inputs.
-5. Modal close buttons are auto-clicked every second using DOM detection.
+2. The message is sent via IPC to `main.js`, which copies it to clipboard and dispatches to all WebViews.
+3. Each WebView executes JavaScript to:
+   - Find the appropriate input element (ProseMirror, Lexical, or textarea)
+   - Clear existing content and inject the new message
+   - Update React component state for proper detection
+   - Trigger input events and click the submit button
+4. Platform-specific handling ensures compatibility with different editor types.
+5. Modal close buttons are auto-clicked using DOM detection.
 
 ## ⚠️ Security Notes
 
@@ -77,4 +79,4 @@ MIT License
 
 ## Demo
 
-![Image](https://github.com/user-attachments/assets/c54f2892-10ac-40d4-b9c5-5aa8304a3215)
+![Image](https://github.com/user-attachments/assets/61c37769-fb28-4e1f-a05b-6088a7cb0127)
