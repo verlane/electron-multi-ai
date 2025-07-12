@@ -1,18 +1,38 @@
 {
   "name": "electron-multi-ai",
   "version": "1.0.0",
+  "description": "Multi AI Chat desktop application with JavaScript automation",
+  "author": "Your Name",
   "main": "main.js",
   "license": "MIT",
   "dependencies": {
-    "electron": "^35.0.2",
     "electron-reload": "^2.0.0-alpha.1",
     "electron-window-state": "^5.0.3"
   },
   "scripts": {
     "start": "electron .",
-    "rebuild": "electron-rebuild"
+    "postinstall": "electron-builder install-app-deps"
   },
   "devDependencies": {
-    "electron-rebuild": "^3.2.9"
+    "electron": "^35.0.2"
+  },
+  "build": {
+    "appId": "com.yourcompany.electron-multi-ai",
+    "productName": "Multi AI Chat",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "renderer.js", 
+      "index.html",
+      "assets/**/*",
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "forceCodeSigning": false
+    }
   }
 }
