@@ -326,10 +326,17 @@ class MessageDispatcher {
                 return;
               }
 
-              // Focus first
+              // Send ESC key first to close any popups
               textarea.focus();
+              const escEvent = new KeyboardEvent('keydown', { 
+                key: 'Escape', 
+                code: 'Escape', 
+                keyCode: 27,
+                bubbles: true 
+              });
+              document.dispatchEvent(escEvent);
               
-              // Wait a bit for focus to complete
+              // Wait a bit for ESC to take effect and focus to complete
               setTimeout(() => {
                 const text = '${message.replace(/'/g, "\\'")}';
                 
@@ -400,7 +407,7 @@ class MessageDispatcher {
                   finalContent: textarea.value,
                   retryCount: retryCount
                 });
-              }, 200);
+              }, 300); // Increased wait time for ESC to take effect
             };
             
             attemptInput();
