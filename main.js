@@ -4,8 +4,6 @@ const path = require('path');
 
 // Global variables
 let mainWindow;
-let ahk = null;
-const ahkexepath = path.join(__dirname, 'AutoHotkey64.exe');
 const statePath = path.join(app.getPath('userData'), 'window-state.json');
 
 // ===== Window State Management =====
@@ -60,11 +58,7 @@ function setupWindowEventHandlers() {
 // ===== App Initialization =====
 app.whenReady().then(async () => {
   createWindow();
-  await initializeAHK();
   setupGlobalShortcuts();
-  
-  // Initialize IME management
-  imeManager.startKeepAlive();
 });
 
 function setupGlobalShortcuts() {
@@ -88,126 +82,20 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// ===== AutoHotkey Management =====
-async function initializeAHK() {
-  try {
-    ahk = await require("ahknodejs")(ahkexepath, [
-      { key: '\\', noInterrupt: true },
-      { key: ']', noInterrupt: true },
-    ]);
-    
-    // AHK interrupt handler
-    (async () => {
-      while (true) {
-        await ahk.waitForInterrupt();
-        await ahk.sleep(5000);
-      }
-    })();
-    
-    console.log('AutoHotkey initialized successfully');
-  } catch (error) {
-    console.error('Failed to initialize AutoHotkey:', error);
-  }
-}
-
-// ===== Robot Actions & Message Handling =====
-class RobotActionHandler {
-  static async execute(actions) {
-    const position = await ahk.getMousePos();
-    
-    for (const action of actions) {
-      await this.performAction(action);
-      await ahk.sleep(100);
-    }
-    
-    await ahk.mouseMove({ x: position[0], y: position[1] });
-    
-    // Reset IME after automation
-    mainWindow.webContents.send('focus-chat');
-    await ahk.sleep(100);
-    await imeManager.resetIME();
-  }
-
-  static async performAction(data) {
-    switch (data.type) {
-      case 'click-relative':
-        await this.clickRelative(data);
-        break;
-      case 'click':
-        await ahk.mouseMove({ x: data.x, y: data.y });
-        await ahk.click();
-        break;
-      case 'clipboard-paste':
-        await clipboard.writeText(data.text);
-        await ahk.sleep(100);
-        await ahk.send('^a^v');
-        break;
-      case 'ahk':
-        await ahk.send(data.text);
-        break;
-    }
-  }
-
-  static async clickRelative(data) {
-    const bounds = mainWindow.getBounds();
-    const display = screen.getDisplayNearestPoint({ x: bounds.x, y: bounds.y });
-    const screenX = bounds.x * display.scaleFactor + data.x;
-    const screenY = bounds.y * display.scaleFactor + data.y;
-    await ahk.mouseMove({ x: screenX, y: screenY });
-    await ahk.click();
-  }
-}
-
-// IPC Message handlers
-ipcMain.on('robot-actions', (event, actions) => {
-  RobotActionHandler.execute(actions);
-});
+// ===== Message Handling =====
 
 ipcMain.on('send-message', (event, message) => {
-  const bounds = mainWindow.getBounds();
-  const display = screen.getDisplayNearestPoint({ x: bounds.x, y: bounds.y });
-  event.reply('dispatch-message', message, bounds, display.scaleFactor);
+  // Copy message to clipboard
+  clipboard.writeText(message);
+  console.log('Message copied to clipboard:', message);
+  
+  event.reply('dispatch-message', message);
 });
 
 function focusChat() {
   mainWindow.webContents.send('focus-chat');
 }
 
-// ===== IME Management =====
-class IMEManager {
-  constructor() {
-    this.keepAliveTimer = null;
-  }
-
-  async resetIME() {
-    if (ahk) {
-      await ahk.send('{Space}{Backspace}');
-    }
-  }
-
-  scheduleKeepAlive() {
-    if (this.keepAliveTimer) clearTimeout(this.keepAliveTimer);
-    
-    this.keepAliveTimer = setTimeout(async () => {
-      if (mainWindow && mainWindow.isFocused()) {
-        await this.resetIME();
-        this.scheduleKeepAlive(); // Reschedule
-      }
-    }, 5000); // 5 seconds of idle
-  }
-
-  startKeepAlive() {
-    setTimeout(() => {
-      this.scheduleKeepAlive();
-    }, 5000);
-  }
-}
-
-const imeManager = new IMEManager();
-
-// IME IPC handlers
-ipcMain.on('ime-reset', () => imeManager.resetIME());
-ipcMain.on('reset-ime-timer', () => imeManager.scheduleKeepAlive());
 
 // 자동 리로드 (개발 중)
 const electronReload = require('electron-reload');
